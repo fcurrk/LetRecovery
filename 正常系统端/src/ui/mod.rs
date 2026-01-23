@@ -6,3 +6,4 @@ pub mod install_progress;
 pub mod online_download;
 pub mod system_backup;
 pub mod system_install;
+pub mod tools;
