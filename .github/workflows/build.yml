@@ -1,0 +1,90 @@
+name: Build LetRecovery
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: stable
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [正常系统端, PE端]
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 安装 Rust 工具链
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: x86_64-unknown-linux-gnu
+        
+    - name: 缓存 Cargo 依赖
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: 构建 ${{ matrix.target }}
+      run: |
+        cd "${{ matrix.target }}"
+        cargo build --release
+        echo "构建完成: ${{ matrix.target }}"
+        
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.target }}-binary
+        path: ${{ matrix.target }}/target/release/*
+        if-no-files-found: error
+
+  release-build:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: 下载所有构建产物
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+        
+    - name: 列出所有构建文件
+      run: |
+        echo "构建完成的文件:"
+        find artifacts -type f -name "*"
+        
+    - name: 创建发布包
+      run: |
+        mkdir -p release
+        # 复制正常系统端
+        if [ -d "artifacts/正常系统端-binary" ]; then
+          cp artifacts/正常系统端-binary/* release/ 2>/dev/null || true
+        fi
+        # 复制PE端
+        if [ -d "artifacts/PE端-binary" ]; then
+          cp artifacts/PE端-binary/* release/ 2>/dev/null || true
+        fi
+        
+        echo "发布包内容:"
+        ls -la release/
+        
+    - name: 上传发布包
+      uses: actions/upload-artifact@v3
+      with:
+        name: letrecovery-release
+        path: release/*
