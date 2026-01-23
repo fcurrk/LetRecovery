@@ -9,7 +9,7 @@ impl App {
         egui::ScrollArea::vertical()
             .max_height(available_height)
             .show(ui, |ui| {
-                ui.heading("关于 LetRecovery");
+                ui.heading("关于 LetRecovery - Mod版");
                 ui.separator();
 
                 ui.add_space(20.0);
@@ -17,7 +17,7 @@ impl App {
                 // 版本信息
                 ui.horizontal(|ui| {
                     ui.label("版本:");
-                    ui.strong("v2026.1.18");
+                    ui.strong("v2026.1.23-Mod");
                 });
 
                 ui.add_space(15.0);
@@ -90,13 +90,13 @@ impl App {
                 ui.add_space(20.0);
                 ui.separator();
 
-                // 致谢
-                ui.heading("致谢");
+                // 定制
+                ui.heading("版本定制");
 
                 ui.add_space(10.0);
 
-                ui.label("• 部分系统镜像及 PE 下载服务由 Cloud-PE 云盘提供");
-                ui.label("• 感谢 电脑病毒爱好者 提供 WinPE");
+                ui.label("• 本工具提供的云资源由爱好者免费提供维护，不保证资源有效性");
+                ui.label("• MINIJER定制版本");
 
                 ui.add_space(30.0);
                 ui.separator();
