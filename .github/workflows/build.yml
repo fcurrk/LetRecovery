@@ -1,96 +1,150 @@
-name: Build LetRecovery
+name: Build LetRecovery (Windows)
 
 on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:  # 允许手动触发
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.75.0"  # 指定 Rust 1.75.0 版本
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: 
-          - name: "正常系统端"
-            path: "正常系统端"
-          - name: "PE端"
-            path: "PE端"
+  build-windows:
+    runs-on: windows-2022  # 使用 Windows 2022 运行器
     
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
       
-    - name: 安装 Rust 工具链
-      uses: dtolnay/rust-toolchain@stable
+    - name: 安装 Visual Studio Build Tools
+      # 使用 setup-msbuild 安装构建工具
+      uses: microsoft/setup-msbuild@v2
       with:
-        toolchain: stable
+        vs-version: '17.0'  # Visual Studio 2022
+        
+    - name: 安装 Rust 工具链
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+        targets: x86_64-pc-windows-msvc
+        
+    - name: 验证 Rust 版本
+      run: |
+        rustc --version
+        cargo --version
         
     - name: 缓存 Cargo 依赖
       uses: actions/cache@v4
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
+          ~\.cargo\registry
+          ~\.cargo\git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: 构建 ${{ matrix.target.name }}
+    - name: 构建正常系统端
       run: |
-        cd "${{ matrix.target.path }}"
+        cd "正常系统端"
         cargo build --release --verbose
+        
+    - name: 构建 PE 端
+      run: |
+        cd "PE端"
+        cargo build --release --verbose
+        
+    - name: 重命名可执行文件
+      run: |
+        # 确保所有可执行文件都有 .exe 扩展名
+        $executables = @()
+        
+        # 检查正常系统端
+        if (Test-Path "正常系统端\target\release") {
+          $normalFiles = Get-ChildItem "正常系统端\target\release\*" -Exclude "*.pdb", "*.dll", "*.lib"
+          foreach ($file in $normalFiles) {
+            if ($file.Name -notmatch '\.(exe|dll|pdb|lib)$' -and $file.Mode -notmatch 'd') {
+              $newName = $file.Name + ".exe"
+              Rename-Item $file.FullName -NewName $newName
+              $executables += "$newName"
+            } elseif ($file.Name -match '\.exe$') {
+              $executables += $file.Name
+            }
+          }
+        }
+        
+        # 检查 PE 端
+        if (Test-Path "PE端\target\release") {
+          $peFiles = Get-ChildItem "PE端\target\release\*" -Exclude "*.pdb", "*.dll", "*.lib"
+          foreach ($file in $peFiles) {
+            if ($file.Name -notmatch '\.(exe|dll|pdb|lib)$' -and $file.Mode -notmatch 'd') {
+              $newName = $file.Name + ".exe"
+              Rename-Item $file.FullName -NewName $newName
+              $executables += "$newName"
+            } elseif ($file.Name -match '\.exe$') {
+              $executables += $file.Name
+            }
+          }
+        }
+        
+        Write-Host "构建完成的可执行文件:"
+        $executables | ForEach-Object { Write-Host "  $_" }
         
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.target.name }}-binary
-        path: ${{ matrix.target.path }}/target/release/*
+        name: letrecovery-windows-binaries
+        path: |
+          正常系统端/target/release/*.exe
+          PE端/target/release/*.exe
         if-no-files-found: error
-        retention-days: 7
-
-  release-build:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    
-    steps:
-    - name: 下载所有构建产物
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        pattern: '*-binary'
-        merge-multiple: true
+        retention-days: 30
         
-    - name: 列出构建文件
-      run: |
-        echo "构建完成的文件:"
-        find artifacts -type f -name "*" 2>/dev/null || echo "未找到文件"
-        
-    - name: 准备发布包
+    - name: 创建发布包
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       run: |
         # 创建发布目录
-        mkdir -p release
+        New-Item -ItemType Directory -Force -Path "release"
         
-        # 查找所有可执行文件
-        if find artifacts -type f -executable 2>/dev/null | grep -q .; then
-          find artifacts -type f -executable -exec cp {} release/ \;
-        else
-          # 如果没有可执行文件标记，复制所有文件
-          find artifacts -type f -exec cp {} release/ 2>/dev/null || true
-        fi
+        # 复制可执行文件到发布目录
+        Copy-Item "正常系统端\target\release\*.exe" -Destination "release\" -Force
+        Copy-Item "PE端\target\release\*.exe" -Destination "release\" -Force
         
-        # 添加可执行权限（Linux环境）
-        chmod +x release/* 2>/dev/null || true
+        # 创建版本信息文件
+        $versionInfo = @"
+LetRecovery Windows 版本
+==========================
+构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+提交哈希: ${{ github.sha }}
+Rust 版本: ${{ env.RUST_VERSION }}
+GitHub 仓库: https://github.com/${{ github.repository }}
+
+包含的可执行文件:
+"@
         
-        echo "发布包内容:"
-        ls -la release/ 2>/dev/null || echo "发布目录为空"
+        $files = Get-ChildItem "release\*.exe" | Sort-Object Name
+        foreach ($file in $files) {
+          $versionInfo += "`n- $($file.Name)"
+        }
+        
+        $versionInfo | Out-File -FilePath "release\VERSION.txt" -Encoding UTF8
+        
+        # 创建 ZIP 压缩包
+        Compress-Archive -Path "release\*" -DestinationPath "LetRecovery-Windows-${{ github.sha }}.zip" -Force
+        
+        Write-Host "发布包创建完成"
+        Get-ChildItem "*.zip"
         
     - name: 上传发布包
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: actions/upload-artifact@v4
       with:
-        name: letrecovery-release
-        path: release/*
-        if-no-files-found: warn
-        retention-days: 30
+        name: letrecovery-windows-release
+        path: |
+          *.zip
+          release/VERSION.txt
+        if-no-files-found: error
+        retention-days: 90
