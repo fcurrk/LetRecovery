@@ -31,7 +31,7 @@ use crate::app::App;
 
 impl App {
     /// 显示工具箱页面
-    pub fn show_tools(&mut self, ui: &mut egui::Ui) {
+    pub fn show_tool(&mut self, ui: &mut egui::Ui) {
         ui.heading("工具箱");
         ui.separator();
 

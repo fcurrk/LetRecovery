@@ -1200,7 +1200,7 @@ impl eframe::App for App {
             Panel::SystemInstall => self.show_system_install(ui),
             Panel::SystemBackup => self.show_system_backup(ui),
             Panel::OnlineDownload => self.show_online_download(ui),
-            Panel::Tools => self.show_tools(ui),
+            Panel::Tools => self.show_tool(ui),
             Panel::HardwareInfo => self.show_hardware_info(ui),
             Panel::DownloadProgress => self.show_download_progress(ui),
             Panel::InstallProgress => self.show_install_progress(ui),
