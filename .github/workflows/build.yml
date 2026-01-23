@@ -1,22 +1,21 @@
 name: Build LetRecovery
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:  # 允许手动触发
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN: stable
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [正常系统端, PE端]
+        target: 
+          - name: "正常系统端"
+            path: "正常系统端"
+          - name: "PE端"
+            path: "PE端"
     
     steps:
     - name: 检出代码
@@ -26,10 +25,9 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        targets: x86_64-unknown-linux-gnu
         
     - name: 缓存 Cargo 依赖
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -39,18 +37,18 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: 构建 ${{ matrix.target }}
+    - name: 构建 ${{ matrix.target.name }}
       run: |
-        cd "${{ matrix.target }}"
-        cargo build --release
-        echo "构建完成: ${{ matrix.target }}"
+        cd "${{ matrix.target.path }}"
+        cargo build --release --verbose
         
     - name: 上传构建产物
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.target }}-binary
-        path: ${{ matrix.target }}/target/release/*
+        name: ${{ matrix.target.name }}-binary
+        path: ${{ matrix.target.path }}/target/release/*
         if-no-files-found: error
+        retention-days: 7
 
   release-build:
     runs-on: ubuntu-latest
@@ -59,32 +57,40 @@ jobs:
     
     steps:
     - name: 下载所有构建产物
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
+        pattern: '*-binary'
+        merge-multiple: true
         
-    - name: 列出所有构建文件
+    - name: 列出构建文件
       run: |
         echo "构建完成的文件:"
-        find artifacts -type f -name "*"
+        find artifacts -type f -name "*" 2>/dev/null || echo "未找到文件"
         
-    - name: 创建发布包
+    - name: 准备发布包
       run: |
+        # 创建发布目录
         mkdir -p release
-        # 复制正常系统端
-        if [ -d "artifacts/正常系统端-binary" ]; then
-          cp artifacts/正常系统端-binary/* release/ 2>/dev/null || true
+        
+        # 查找所有可执行文件
+        if find artifacts -type f -executable 2>/dev/null | grep -q .; then
+          find artifacts -type f -executable -exec cp {} release/ \;
+        else
+          # 如果没有可执行文件标记，复制所有文件
+          find artifacts -type f -exec cp {} release/ 2>/dev/null || true
         fi
-        # 复制PE端
-        if [ -d "artifacts/PE端-binary" ]; then
-          cp artifacts/PE端-binary/* release/ 2>/dev/null || true
-        fi
+        
+        # 添加可执行权限（Linux环境）
+        chmod +x release/* 2>/dev/null || true
         
         echo "发布包内容:"
-        ls -la release/
+        ls -la release/ 2>/dev/null || echo "发布目录为空"
         
     - name: 上传发布包
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: letrecovery-release
         path: release/*
+        if-no-files-found: warn
+        retention-days: 30
