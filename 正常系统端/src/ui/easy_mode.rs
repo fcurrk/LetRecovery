@@ -26,7 +26,7 @@ impl App {
             ui.horizontal(|ui| {
                 ui.colored_label(
                     egui::Color32::from_rgb(100, 181, 246),
-                    "💡 您可以在\"关于\"页面中关闭小白模式",
+                    "💡 您可以在\"关于\"页面中关闭简易模式",
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.small_button("×").clicked() {

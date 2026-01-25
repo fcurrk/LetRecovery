@@ -402,11 +402,11 @@ impl EasyModeConfig {
     pub fn parse(content: &str) -> Option<Self> {
         match serde_json::from_str::<EasyModeConfig>(content) {
             Ok(config) => {
-                log::info!("小白模式配置加载成功，共 {} 个系统", config.system.len());
+                log::info!("简易模式配置加载成功，共 {} 个系统", config.system.len());
                 Some(config)
             }
             Err(e) => {
-                log::warn!("解析小白模式配置失败: {}", e);
+                log::warn!("解析简易模式配置失败: {}", e);
                 None
             }
         }

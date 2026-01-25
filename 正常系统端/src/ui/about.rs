@@ -36,7 +36,7 @@ impl App {
                     let mut easy_mode = self.app_config.easy_mode_enabled;
                     
                     ui.add_enabled_ui(!is_pe, |ui| {
-                        if ui.checkbox(&mut easy_mode, "启用小白模式").changed() {
+                        if ui.checkbox(&mut easy_mode, "启用简易模式").changed() {
                             self.app_config.set_easy_mode(easy_mode);
                         }
                     });
@@ -53,7 +53,7 @@ impl App {
                 ui.indent("easy_mode_desc", |ui| {
                     ui.colored_label(
                         egui::Color32::GRAY,
-                        "小白模式提供简化的系统重装界面，自动应用推荐设置，",
+                        "简易模式提供简化的系统重装界面，自动应用推荐设置，",
                     );
                     ui.colored_label(
                         egui::Color32::GRAY,

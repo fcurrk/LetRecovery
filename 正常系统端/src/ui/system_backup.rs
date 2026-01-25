@@ -297,7 +297,7 @@ impl App {
         // 显示备份完成
         if self.backup_progress >= 100 && !self.is_backing_up {
             ui.add_space(10.0);
-            ui.colored_label(egui::Color32::GREEN, "✓ 备份完成！");
+            ui.colored_label(egui::Color32::GREEN, "✓ 备份完成！如系统没有自动重启至PE备份请手动重启计算机。");
         }
 
         // 显示备份错误
