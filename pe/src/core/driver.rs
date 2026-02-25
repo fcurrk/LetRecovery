@@ -1,17 +1,14 @@
 //! Windows 驱动管理模块
 //!
-//! 使用多种方式实现驱动的导出和导入功能：
-//! - 离线驱动导入：优先使用 dism.exe 命令行，回退到 Windows API
-//! - 在线驱动操作：使用 SetupAPI/NewDev API
-//!
-//! Windows API 模块：
+//! 使用 Windows API 实现驱动的导出和导入功能：
 //! - SetupAPI (setupapi.dll) - 驱动安装和枚举
 //! - NewDev API (newdev.dll) - 驱动安装
 //! - CfgMgr32 (cfgmgr32.dll) - 设备配置管理
+//! - Offreg (offreg.dll) - 离线注册表操作
 //!
-//! DISM 命令行：
-//! - 优先使用 {程序目录}\bin\Dism\dism.exe
-//! - 回退到系统 dism.exe
+//! 不依赖 DISM 命令行，直接调用系统 DLL
+
+#![allow(dead_code)]
 
 use std::ffi::{c_void, OsStr, OsString};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
@@ -864,8 +861,11 @@ impl DriverManager {
 
     /// 导入驱动到离线系统（PE环境下使用）
     /// 
-    /// 使用 dism.exe 命令行进行离线驱动注入
-    /// 优先使用 {程序目录}\bin\Dism\dism.exe
+    /// 完整的离线驱动注入，包括：
+    /// 1. 复制驱动文件到 DriverStore\FileRepository
+    /// 2. 复制 .sys 文件到 System32\drivers
+    /// 3. 复制 INF 到 Windows\INF (命名为 oem*.inf)
+    /// 4. 注册驱动服务到离线注册表
     ///
     /// # 参数
     /// - `offline_root`: 离线系统根目录 (如 "D:\\")
@@ -874,57 +874,6 @@ impl DriverManager {
     /// # 返回
     /// - (成功数, 失败数)
     pub fn import_drivers_offline(
-        &self,
-        offline_root: &Path,
-        source_dir: &Path,
-    ) -> Result<(usize, usize)> {
-        use crate::core::dism_cmd::DismCmd;
-        
-        println!(
-            "[DriverManager] 使用 dism.exe 离线导入驱动: {:?} -> {:?}",
-            source_dir, offline_root
-        );
-
-        // 规范化路径
-        let image_path = offline_root.to_string_lossy();
-        let driver_path = source_dir.to_string_lossy();
-
-        // 使用 dism.exe 命令行进行离线驱动注入
-        let dism_cmd = DismCmd::new()
-            .map_err(|e| anyhow::anyhow!("DISM 命令行初始化失败: {}", e))?;
-
-        // 统计驱动文件数量
-        let inf_files = Self::find_inf_files(source_dir)?;
-        let inf_count = inf_files.len();
-
-        // 使用智能导入（支持 INF 和 CAB）
-        match dism_cmd.import_drivers_smart(&image_path, &driver_path, None) {
-            Ok(_) => {
-                println!(
-                    "[DriverManager] dism.exe 离线驱动导入成功"
-                );
-                // DISM 成功时假设所有驱动都导入成功
-                Ok((inf_count.max(1), 0))
-            }
-            Err(e) => {
-                println!(
-                    "[DriverManager] dism.exe 导入失败: {}, 尝试备用方法",
-                    e
-                );
-                // 回退到传统方法
-                self.import_drivers_offline_legacy(offline_root, source_dir)
-            }
-        }
-    }
-
-    /// 传统离线驱动导入方法（作为备用）
-    /// 
-    /// 完整的离线驱动注入，包括：
-    /// 1. 复制驱动文件到 DriverStore\FileRepository
-    /// 2. 复制 .sys 文件到 System32\drivers
-    /// 3. 复制 INF 到 Windows\INF (命名为 oem*.inf)
-    /// 4. 注册驱动服务到离线注册表
-    fn import_drivers_offline_legacy(
         &self,
         offline_root: &Path,
         source_dir: &Path,
@@ -1077,7 +1026,7 @@ impl DriverManager {
         offline_root: &Path,
         driver_store_dir: &Path,
         inf_filename: &str,
-        oem_inf_name: &str,
+        _oem_inf_name: &str,
     ) -> Result<()> {
         use crate::core::registry::OfflineRegistry;
         
