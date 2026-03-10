@@ -29,6 +29,13 @@ jobs:
           name: LetRecovery-Desktop
           path: desktop/target/x86_64-pc-windows-msvc/release/LetRecovery.exe
           retention-days: 30
+      - name: Commit and push Cargo.lock (and Cargo.toml if changed)
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add Cargo.toml Cargo.lock
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update Cargo.lock via build"
+          git push
   build-pe:
     runs-on: windows-latest
     steps:
@@ -51,3 +58,10 @@ jobs:
           name: LetRecovery-PE
           path: pe/target/x86_64-pc-windows-msvc/release/LetRecoveryPE.exe
           retention-days: 30
+      - name: Commit and push Cargo.lock (and Cargo.toml if changed)
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add Cargo.toml Cargo.lock
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update Cargo.lock via build"
+          git push
