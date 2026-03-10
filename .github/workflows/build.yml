@@ -29,7 +29,7 @@ jobs:
           name: LetRecovery-Desktop
           path: desktop/target/x86_64-pc-windows-msvc/release/LetRecovery.exe
           retention-days: 30
-  test-pe-build:
+  build-pe:
     runs-on: windows-latest
     steps:
       - name: Checkout source code
