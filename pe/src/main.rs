@@ -414,7 +414,7 @@ fn run_cli_mode(is_install: bool) -> eframe::Result<()> {
 
 /// 生成无人值守XML
 fn generate_unattend_xml(target_partition: &str, username: &str) -> anyhow::Result<()> {
-    let username = if username.is_empty() { "User" } else { username };
+    let username = if username.is_empty() { "MyPc" } else { username };
 
     let xml_content = format!(
         r#"<?xml version="1.0" encoding="utf-8"?>
