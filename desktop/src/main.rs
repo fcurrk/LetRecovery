@@ -596,7 +596,7 @@ fn generate_unattend_xml_pe(target_partition: &str, username: &str) -> anyhow::R
     use crate::core::system_utils::{get_file_version, get_system_architecture};
     use std::path::Path;
     
-    let username = if username.is_empty() { "User" } else { username };
+    let username = if username.is_empty() { "MyPc" } else { username };
     
     // 检测目标系统架构
     let arch = get_system_architecture(target_partition);
@@ -665,7 +665,7 @@ fn generate_unattend_xml_pe(target_partition: &str, username: &str) -> anyhow::R
                         <Description>Local User</Description>
                         <DisplayName>{user}</DisplayName>
                         <Group>Administrators</Group>
-                        <n>{user}</n>
+                        <Name>{user}</Name>
                     </LocalAccount>
                 </LocalAccounts>
             </UserAccounts>
