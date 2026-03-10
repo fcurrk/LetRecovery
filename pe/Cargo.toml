@@ -44,6 +44,7 @@ thiserror = "1"
 # 其他工具
 walkdir = "2"
 image = "0.25"
+chrono = "0.4"
 
 [build-dependencies]
 winres = "0.1"

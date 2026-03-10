@@ -14,11 +14,11 @@ fn main() -> eframe::Result<()> {
         .format(|buf, record| {
 
             use std::io::Write;
-            let ts = Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"); // 微秒级，无时区偏移
+            let log_ts = Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"); // 微秒级，无时区偏移
             writeln!(
                 buf,
                 "{} {:<5} {}: {}:{}: {}",
-                ts,
+                log_ts,
                 record.level(),
                 record.target(),
                 record.file().unwrap_or("<unknown>"),
