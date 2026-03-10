@@ -6,30 +6,23 @@ mod ui;
 mod utils;
 
 use eframe::egui;
-use std::io::Write;
+use chrono::Local;
 
 fn main() -> eframe::Result<()> {
     // 初始化日志
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format(|buf, record| {
 
-            // 获取本地时间戳（格式如：2026-03-10T15:07:30.603184+08:00）
-            let log_ts = buf.timestamp_local();
-
-            // 获取目标（模块路径）、文件名、行号
-            let log_target = record.target();
-            let log_file = record.file().unwrap_or("<unknown>");
-            let log_line = record.line().unwrap_or(0);
-
-            // 自定义输出格式
+            use std::io::Write;
+            let ts = Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"); // 微秒级，无时区偏移
             writeln!(
                 buf,
                 "{} {:<5} {}: {}:{}: {}",
-                log_ts,
+                ts,
                 record.level(),
-                log_target,
-                log_file,
-                log_line,
+                record.target(),
+                record.file().unwrap_or("<unknown>"),
+                record.line().unwrap_or(0),
                 record.args()
             )
         })
