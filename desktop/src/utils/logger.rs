@@ -17,6 +17,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter, Layer};
 
 use super::path::get_exe_dir;
+use tracing_subscriber::fmt::time::ChronoLocal;
 
 /// 全局日志启用状态
 static LOG_ENABLED: AtomicBool = AtomicBool::new(true);
@@ -59,6 +60,9 @@ impl LogManager {
             let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
             // 文件日志格式层
+            // 创建本地时间计时器，格式与原来一致（微秒级精度）
+            let log_timer = ChronoLocal::new("%Y-%m-%dT%H:%M:%S%.6f".to_string());
+
             let file_layer = fmt::layer()
                 .with_writer(non_blocking)
                 .with_ansi(false)
@@ -67,6 +71,7 @@ impl LogManager {
                 .with_thread_names(false)
                 .with_file(true)
                 .with_line_number(true)
+                .with_timer(log_timer)       // 使用本地时间
                 .with_filter(env_filter);
 
             // 初始化 tracing 订阅器
