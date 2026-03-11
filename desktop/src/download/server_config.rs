@@ -89,7 +89,7 @@ impl RemoteConfig {
         
         // 请求服务器配置
         let config_url = SERVER_BASE_URL;
-        log::info!("请求服务器配置: {}", config_url);
+//        log::info!("请求服务器配置: {}", config_url);
         
         let response = client
             .get(config_url)
@@ -117,17 +117,17 @@ impl RemoteConfig {
         let easy_url = data.easy.as_ref().map(|s| Self::resolve_url(s));
         let gpu_url = data.gpu.as_ref().map(|s| Self::resolve_url(s));
         
-        log::info!("PE 配置 URL: {}", pe_url);
-        log::info!("DL 配置 URL: {}", dl_url);
-        if let Some(ref url) = soft_url {
-            log::info!("Soft 配置 URL: {}", url);
-        }
-        if let Some(ref url) = easy_url {
-            log::info!("Easy 配置 URL: {}", url);
-        }
-        if let Some(ref url) = gpu_url {
-            log::info!("GPU 配置 URL: {}", url);
-        }
+//        log::info!("PE 配置 URL: {}", pe_url);
+//        log::info!("DL 配置 URL: {}", dl_url);
+//        if let Some(ref url) = soft_url {
+//            log::info!("Soft 配置 URL: {}", url);
+//        }
+//        if let Some(ref url) = easy_url {
+//            log::info!("Easy 配置 URL: {}", url);
+//        }
+//        if let Some(ref url) = gpu_url {
+//            log::info!("GPU 配置 URL: {}", url);
+//        }
         
         // 获取 PE 配置内容
         let pe_content = Self::fetch_text_content(&client, &pe_url).ok();

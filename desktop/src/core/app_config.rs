@@ -36,7 +36,7 @@ pub struct AppConfig {
 
 /// 日志默认启用
 fn default_log_enabled() -> bool {
-    true
+    false
 }
 
 /// 日志默认保留7天
@@ -55,7 +55,7 @@ impl Default for AppConfig {
             easy_mode_enabled: false,
             easy_mode_tip_dismissed: false,
             easy_mode_settings_tip_dismissed: false,
-            log_enabled: true,  // 日志默认启用
+            log_enabled: false,  // 日志默认启用
             log_retention_days: 7,  // 默认保留7天
             language: String::from("zh-CN"),  // 默认简体中文
         }
