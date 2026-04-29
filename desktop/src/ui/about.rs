@@ -20,7 +20,7 @@ impl App {
                 // 版本信息
                 ui.horizontal(|ui| {
                     ui.label(tr!("版本:"));
-                    ui.strong("v2026.3.11-Mod");
+                    ui.strong("v2026.4.29-Mod");
                 });
 
                 ui.add_space(15.0);
@@ -292,6 +292,8 @@ impl App {
                 ui.add_space(10.0);
 
                 ui.label(format!("• {}", tr!("本工具提供的云资源由爱好者免费提供维护，不保证资源有效性")));
+                ui.label(format!("• {}", tr!("定制版修复了部分发现的问题，在保证纯净的基础上进行了部分个性化定制")));
+                ui.label(format!("• {}", tr!("定制版在检测到镜像释放分区存在unattend.xml文件自动跳过无人值守相关的所有功能")));
                 ui.label(format!("• {}", tr!("MINIJER定制版本")));
 
                 ui.add_space(30.0);

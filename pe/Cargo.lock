@@ -1353,7 +1353,7 @@ checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
 name = "letrecovery-pe"
-version = "2026.3.11"
+version = "2026.4.29"
 dependencies = [
  "anyhow",
  "chrono",

@@ -91,7 +91,7 @@ const License: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">版本</span>
-                    <Badge variant="secondary" size="lg">v2026.2.6</Badge>
+                    <Badge variant="secondary" size="lg">v2026.4.29</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">许可证</span>

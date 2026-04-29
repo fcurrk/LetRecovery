@@ -42,7 +42,7 @@ fn get_global_client() -> &'static reqwest::Client {
             // 启用TCP nodelay减少延迟
             .tcp_nodelay(true)
             // User-Agent
-            .user_agent("LetRecovery/2026.3")
+            .user_agent("LetRecovery/2026.4")
             .build()
             .expect("创建HTTP客户端失败")
     })
@@ -59,7 +59,7 @@ fn get_global_blocking_client() -> &'static reqwest::blocking::Client {
             .pool_idle_timeout(Duration::from_secs(90))
             .tcp_keepalive(Duration::from_secs(30))
             .tcp_nodelay(true)
-            .user_agent("LetRecovery/2026.3")
+            .user_agent("LetRecovery/2026.4")
             .build()
             .expect("创建HTTP客户端失败")
     })
