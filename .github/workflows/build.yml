@@ -22,10 +22,14 @@ jobs:
           override: true
 
       - name: build Desktop
+        env:
+          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
         working-directory: desktop
         run: cargo build --release --all-features --target=x86_64-pc-windows-msvc
 
       - name: build pe
+        env:
+          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
         working-directory: pe
         run: cargo build --release --all-features --target=x86_64-pc-windows-msvc
 

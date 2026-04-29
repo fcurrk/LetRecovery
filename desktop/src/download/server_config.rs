@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 /// 全局服务器地址
-pub const SERVER_BASE_URL: &str = "https://letrecovery.minijer.com/";
+pub const SERVER_BASE_URL: &str = env!("SERVER_BASE_URL");
 
 /// 服务器配置响应
 #[derive(Debug, Clone, Deserialize)]
@@ -196,7 +196,7 @@ mod tests {
     fn test_resolve_url_relative() {
         assert_eq!(
             RemoteConfig::resolve_url("config/pe"),
-            "https://letrecovery.minijer.com/config/pe"
+            "https://letrecovery.example.com/config/pe"
         );
     }
     
