@@ -878,13 +878,26 @@ fn copy_dir_recursive(src: &str, dst: &str) -> anyhow::Result<()> {
 /// 生成无人值守 XML 文件
 fn generate_unattend_xml(target_partition: &str, options: &AdvancedOptions) -> anyhow::Result<()> {
     use crate::core::system_utils::{get_file_version, get_system_architecture};
+    use std::path::Path;
+    // 检查是否已存在 unattend.xml，如果存在则跳过生成
+    let existing_unattend = Path::new(target_partition)
+        .join("windows")
+        .join("panther")
+        .join("unattend.xml");
+    if existing_unattend.exists() {
+        println!(
+            "[UNATTEND] 目标分区已存在 unattend.xml: {:?}，跳过生成",
+            existing_unattend
+        );
+        return Ok(());
+    }
     
     println!("[UNATTEND] 生成无人值守配置文件");
     
     let username = if options.custom_username && !options.username.is_empty() {
         options.username.clone()
     } else {
-        "User".to_string()
+        "MyPc".to_string()
     };
 
     // 检测目标系统架构

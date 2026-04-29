@@ -429,6 +429,20 @@ fn run_cli_mode(is_install: bool) -> eframe::Result<()> {
 
 /// 生成无人值守XML
 fn generate_unattend_xml(target_partition: &str, username: &str) -> anyhow::Result<()> {
+    use std::path::Path;
+
+    // 检查是否已存在 unattend.xml，如果存在则跳过生成
+    let existing_unattend = Path::new(target_partition)
+        .join("windows")
+        .join("panther")
+        .join("unattend.xml");
+    if existing_unattend.exists() {
+        println!(
+            "[UNATTEND] 目标分区已存在 unattend.xml: {:?}，跳过生成",
+            existing_unattend
+        );
+        return Ok(());
+    }
     let username = if username.is_empty() { "MyPc" } else { username };
 
     let xml_content = format!(
