@@ -557,7 +557,7 @@ impl App {
         
         // 设置用户名
         let username = crate::core::app_config::get_current_username()
-            .unwrap_or_else(|| "User".to_string());
+            .unwrap_or_else(|| "MyPc".to_string());
         self.advanced_options.custom_username = true;
         self.advanced_options.username = username;
         

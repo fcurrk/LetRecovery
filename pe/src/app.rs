@@ -714,7 +714,7 @@ fn generate_unattend_xml(target_partition: &str, config: &crate::core::config::I
     use std::path::Path;
     
     let username = if config.custom_username.is_empty() { 
-        "User".to_string() 
+        "MyPc".to_string() 
     } else { 
         config.custom_username.clone() 
     };
