@@ -36,10 +36,10 @@ jobs:
           git push || echo "Nothing to push desktop/Cargo.lock"
 
       - name: build pe
-         env:
-           SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
-         working-directory: pe
-         run: cargo build --release
+        env:
+          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
+        working-directory: pe
+        run: cargo build --release
 
       - name: Commit pe Cargo.lock
         run: |
