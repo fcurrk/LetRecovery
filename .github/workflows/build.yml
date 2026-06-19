@@ -26,10 +26,10 @@ jobs:
           SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
         working-directory: desktop
         run: cargo build --release
-        echo "=== Checking default target ==="
-        dir target\release\*.exe
-        echo "=== Checking default Cargo ==="
-        dir *.*
+             echo "=== Checking default target ==="
+             dir target\release\*.exe
+             echo "=== Checking default Cargo ==="
+             dir *.*
 
 #       - name: build pe
 #         env:
