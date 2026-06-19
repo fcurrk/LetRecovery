@@ -27,12 +27,13 @@ jobs:
         working-directory: desktop
         run: |
           cargo build --release
-          if exist ..\Cargo.lock (
-            echo "Found Cargo.lock, copying to desktop..."
-            copy ..\Cargo.lock Cargo.lock
-          ) else (
-            echo "Cargo.lock not found in root directory"
-          )
+          if (Test-Path "..\Cargo.lock") {
+            Write-Host "Found Cargo.lock, copying to desktop..."
+            Copy-Item "..\Cargo.lock" "Cargo.lock"
+          } else {
+            Write-Host "Cargo.lock not found in root directory"
+          }
+        shell: pwsh
 
       - name: build pe
         env:
@@ -40,12 +41,13 @@ jobs:
         working-directory: pe
         run: |
           cargo build --release
-          if exist ..\Cargo.lock (
-            echo "Found Cargo.lock, copying to desktop..."
-            copy ..\Cargo.lock Cargo.lock
-          ) else (
-            echo "Cargo.lock not found in root directory"
-          )
+          if (Test-Path "..\Cargo.lock") {
+            Write-Host "Found Cargo.lock, copying to pe..."
+            Copy-Item "..\Cargo.lock" "Cargo.lock"
+          } else {
+            Write-Host "Cargo.lock not found in root directory"
+          }
+        shell: pwsh
 
       - name: Commit Cargo.lock
         run: |
