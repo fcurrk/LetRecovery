@@ -28,8 +28,6 @@ jobs:
         run: |
              cargo build --release
              echo "=== Checking default target ==="
-             dir target\release\*.exe
-             echo "=== Checking default Cargo ==="
              dir *.*
 
 #       - name: build pe
