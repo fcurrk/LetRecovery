@@ -42,8 +42,8 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add desktop/Cargo.lock pe/Cargo.lock
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update pe/Cargo.lock" || echo "No changes to pe/Cargo.lock"
-          git push || echo "Nothing to push pe/Cargo.lock"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update Cargo.lock" || echo "No changes to Cargo.lock"
+          git push || echo "Nothing to push Cargo.lock"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
