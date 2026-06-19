@@ -45,12 +45,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LetRecovery-Desktop
-          path: desktop/target/x86_64-pc-windows-msvc/release/LetRecovery.exe
+          path: desktop/target/x86_64-pc-windows-msvc/release/*.exe
           retention-days: 30
 
       - name: Upload PE artifacts
         uses: actions/upload-artifact@v4
         with:
           name: LetRecovery-PE
-          path: pe/target/x86_64-pc-windows-msvc/release/LetRecoveryPE.exe
+          path: pe/target/x86_64-pc-windows-msvc/release/*.exe
           retention-days: 30
