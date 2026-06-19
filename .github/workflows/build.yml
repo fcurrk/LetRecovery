@@ -27,7 +27,12 @@ jobs:
         working-directory: desktop
         run: |
           cargo build --release
-          copy Cargo.lock desktop\Cargo.lock
+          if exist ..\Cargo.lock (
+            echo "Found Cargo.lock, copying to desktop..."
+            copy ..\Cargo.lock Cargo.lock
+          ) else (
+            echo "Cargo.lock not found in root directory"
+          )
 
       - name: build pe
         env:
@@ -35,15 +40,47 @@ jobs:
         working-directory: pe
         run: |
           cargo build --release
-          copy Cargo.lock pe\Cargo.lock
+          if exist ..\Cargo.lock (
+            echo "Found Cargo.lock, copying to desktop..."
+            copy ..\Cargo.lock Cargo.lock
+          ) else (
+            echo "Cargo.lock not found in root directory"
+          )
 
       - name: Commit Cargo.lock
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add desktop/Cargo.lock pe/Cargo.lock
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update Cargo.lock" || echo "No changes to Cargo.lock"
-          git push || echo "Nothing to push Cargo.lock"
+
+          $hasDesktop = Test-Path "desktop/Cargo.lock"
+          $hasPe = Test-Path "pe/Cargo.lock"
+
+          if ($hasDesktop) {
+              Write-Host "desktop/Cargo.lock found"
+              git add desktop/Cargo.lock
+            } else {
+              Write-Host "desktop/Cargo.lock not found"
+          }
+          if ($hasPe) {
+            Write-Host "pe/Cargo.lock found"
+            git add pe/Cargo.lock
+          } else {
+            Write-Host "pe/Cargo.lock not found"
+          }
+
+          if ($hasDesktop -or $hasPe) {
+            Write-Host "Committing Cargo.lock updates..."
+            git diff --quiet && git diff --staged --quiet
+            if ($LASTEXITCODE -ne 0) {
+              git commit -m "Update Cargo.lock"
+              git push
+            } else {
+              Write-Host "No changes to Cargo.lock"
+            }
+          } else {
+            Write-Host "No Cargo.lock files found in desktop or pe, skipping commit"
+          }
+        shell: pwsh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
