@@ -35,7 +35,7 @@ jobs:
           git diff --quiet && git diff --staged --quiet || git commit -m "Update desktop/Cargo.lock" || echo "No changes to desktop/Cargo.lock"
           git push || echo "Nothing to push desktop/Cargo.lock"
 
-       - name: build pe
+      - name: build pe
          env:
            SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
          working-directory: pe
