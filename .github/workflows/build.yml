@@ -28,7 +28,9 @@ jobs:
         run: |
              cargo build --release
              echo "=== Checking default target ==="
-             dir *.*
+             dir
+             cd ..
+             dir
 
 #       - name: build pe
 #         env:
