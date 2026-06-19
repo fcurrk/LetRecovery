@@ -26,7 +26,7 @@ impl App {
             ui.horizontal(|ui| {
                 ui.colored_label(
                     egui::Color32::from_rgb(100, 181, 246),
-                    "💡 您可以在\"关于\"页面中关闭简易模式",
+                    "您可以在\"关于\"页面中关闭简易模式",
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.small_button("×").clicked() {
@@ -50,7 +50,7 @@ impl App {
             } else {
                 ui.colored_label(
                     egui::Color32::RED,
-                    "❌ 无法获取系统列表，请检查网络连接后重启程序",
+                    "无法获取系统列表，请检查网络连接后重启程序",
                 );
             }
             return;
@@ -61,7 +61,7 @@ impl App {
         if systems.is_empty() {
             ui.colored_label(
                 egui::Color32::from_rgb(255, 165, 0),
-                "⚠ 暂无可用的系统镜像",
+                "暂无可用的系统镜像",
             );
             return;
         }
@@ -173,12 +173,12 @@ impl App {
         
         // 使用 egui 原版风格的 Frame
         let frame = if is_selected {
-            egui::Frame::NONE
+            egui::Frame::none()
                 .fill(ui.visuals().selection.bg_fill)
                 .stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color))
                 .inner_margin(12.0)
         } else {
-            egui::Frame::NONE
+            egui::Frame::none()
                 .fill(ui.visuals().widgets.noninteractive.bg_fill)
                 .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
                 .inner_margin(12.0)
@@ -202,7 +202,7 @@ impl App {
                 let top_response = ui.allocate_rect(top_rect, egui::Sense::click());
                 
                 // 在点击区域内绘制内容
-                ui.allocate_new_ui(egui::UiBuilder::new().max_rect(top_rect), |ui| {
+                ui.allocate_ui_at_rect(top_rect, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(5.0);
                         
@@ -249,7 +249,7 @@ impl App {
                             // 使用唯一的 ID
                             let combo_id = egui::Id::new(format!("easy_vol_combo_{}", idx));
                             
-                            egui::ComboBox::new(combo_id, "")
+                            egui::ComboBox::from_id_source(combo_id)
                                 .selected_text(selected_vol_name)
                                 .width(width - 50.0)
                                 .show_ui(ui, |ui| {
@@ -307,7 +307,7 @@ impl App {
                 return;
             } else {
                 // 内嵌 logo 加载失败，显示默认图标
-                ui.label(egui::RichText::new("💻").size(size * 0.6));
+                ui.label(egui::RichText::new("").size(size * 0.6));
                 return;
             }
         }
@@ -325,7 +325,7 @@ impl App {
                 }
                 EasyModeLogoState::Failed => {
                     // 显示默认图标
-                    ui.label(egui::RichText::new("💻").size(size * 0.6));
+                    ui.label(egui::RichText::new("").size(size * 0.6));
                     return;
                 }
             }
@@ -347,8 +347,8 @@ impl App {
                 ctx_clone.request_repaint();
                 
                 // 通过静态变量传递结果
-                if let Ok(mut results) = LOGO_LOAD_RESULTS.lock() {
-                    results.push(LogoLoadResult {
+                unsafe {
+                    LOGO_LOAD_RESULTS.push(LogoLoadResult {
                         url,
                         data: result,
                     });
@@ -361,9 +361,9 @@ impl App {
     
     /// 处理Logo加载结果
     pub fn process_easy_mode_logo_results(&mut self, ctx: &egui::Context) {
-        let results: Vec<LogoLoadResult> = LOGO_LOAD_RESULTS.lock()
-            .map(|mut r| std::mem::take(&mut *r))
-            .unwrap_or_default();
+        let results: Vec<LogoLoadResult> = unsafe {
+            std::mem::take(&mut LOGO_LOAD_RESULTS)
+        };
         
         for result in results {
             self.easy_mode_logo_loading.remove(&result.url);
@@ -436,7 +436,7 @@ impl App {
                 
                 // 警告标题
                 ui.horizontal(|ui| {
-                    let text = egui::RichText::new("⚠️ 警告").size(20.0).strong();
+                    let text = egui::RichText::new("警告").size(20.0).strong();
                     let text_width = 80.0;
                     ui.add_space((window_width - text_width) / 2.0 - 16.0);
                     ui.colored_label(egui::Color32::from_rgb(255, 193, 7), text);
@@ -623,6 +623,5 @@ fn load_logo_from_url(url: &str) -> Result<Vec<u8>, String> {
         .map_err(|e| e.to_string())
 }
 
-// 静态变量存储Logo加载结果（使用 Mutex 保证线程安全）
-use std::sync::Mutex;
-static LOGO_LOAD_RESULTS: Mutex<Vec<LogoLoadResult>> = Mutex::new(Vec::new());
+// 静态变量存储Logo加载结果
+static mut LOGO_LOAD_RESULTS: Vec<LogoLoadResult> = Vec::new();

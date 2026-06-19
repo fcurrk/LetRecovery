@@ -1,0 +1,236 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "要构建并发布的分支(留空=用上面 Run workflow 选的分支)"
+        required: false
+        default: ""
+      tag:
+        description: "Release 标签(留空=用当天日期,如 2026.6.17)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-and-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            正常系统端
+            PE端
+
+      - name: Build system-side exe (LetRecovery.exe)
+        shell: bash
+        working-directory: 正常系统端
+        run: |
+          set -euo pipefail
+          # 有 Cargo.lock 才用 --locked（main 各 crate 自带锁；workspace 分支可能无锁需现生成）
+          LOCKED=""
+          if [ -f Cargo.lock ] || [ -f ../Cargo.lock ]; then LOCKED="--locked"; fi
+          echo "cargo build --release ${LOCKED:-(no --locked)}"
+          cargo build --release $LOCKED
+
+      - name: Build PE-side exe (LetRecoveryPE.exe)
+        shell: bash
+        working-directory: PE端
+        run: |
+          set -euo pipefail
+          LOCKED=""
+          if [ -f Cargo.lock ] || [ -f ../Cargo.lock ]; then LOCKED="--locked"; fi
+          echo "cargo build --release ${LOCKED:-(no --locked)}"
+          cargo build --release $LOCKED
+
+      - name: Download base package (template)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          set -euo pipefail
+          gh release download release \
+            --repo NORMAL-EX/letrecovery-package \
+            --pattern package.7z --dir .
+          ls -la package.7z
+
+      - name: Extract base package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pkg
+          7z x package.7z -opkg -y >/dev/null
+          test -f "pkg/LetRecovery.exe"            || { echo "底包缺少 LetRecovery.exe"; exit 1; }
+          test -f "pkg/bin/pe/LetRecovery_PE.wim"  || { echo "底包缺少 bin/pe/LetRecovery_PE.wim"; exit 1; }
+
+      - name: Replace system-side exe
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 产物可能在各 crate 的 target/（独立 crate）或工作区根 target/（workspace）
+          src=""
+          for p in "正常系统端/target/release/LetRecovery.exe" "target/release/LetRecovery.exe"; do
+            if [ -f "$p" ]; then src="$p"; break; fi
+          done
+          test -n "$src" || { echo "找不到编译产物 LetRecovery.exe"; exit 1; }
+          echo "Using system-side exe: $src"
+          cp -f "$src" "pkg/LetRecovery.exe"
+
+      - name: Inject PE-side exe into WIM
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $wim   = "pkg\bin\pe\LetRecovery_PE.wim"
+          $mount = Join-Path $env:RUNNER_TEMP "wimmount"
+          New-Item -ItemType Directory -Force -Path $mount | Out-Null
+          Write-Host "Mounting $wim ..."
+          dism /Mount-Image /ImageFile:"$wim" /Index:1 /MountDir:"$mount"
+          if ($LASTEXITCODE -ne 0) { throw "DISM mount failed" }
+          $dst = Join-Path $mount "Program Files\LetRecoveryPE\LetRecoveryPE.exe"
+          # 产物可能在 crate 的 target\ 或工作区根 target\
+          $peExe = @("PE端\target\release\LetRecoveryPE.exe", "target\release\LetRecoveryPE.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $peExe) { throw "找不到编译产物 LetRecoveryPE.exe" }
+          Write-Host "Using PE-side exe: $peExe"
+          Copy-Item -Force $peExe $dst
+          Write-Host "Replaced: $dst"
+          dism /Unmount-Image /MountDir:"$mount" /Commit
+          if ($LASTEXITCODE -ne 0) { throw "DISM unmount/commit failed" }
+
+      - name: Clean WIM (drop orphaned streams shown as [DELETED])
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $wim = "pkg\bin\pe\LetRecovery_PE.wim"
+          Write-Host "=== WIM info BEFORE clean ==="
+          dism /Get-WimInfo /WimFile:"$wim" /Index:1
+          # 挂载提交会在 WIM 内留下被替换文件的旧数据流（7z/Bandizip 显示为 [DELETED]）。
+          # /Export-Image 仅复制被引用的数据流到新 WIM，去掉孤立流；并保留映像名称与可启动标记。
+          $tmp = "pkg\bin\pe\_LetRecovery_PE.clean.wim"
+          if (Test-Path $tmp) { Remove-Item -Force $tmp }
+          dism /Export-Image /SourceImageFile:"$wim" /SourceIndex:1 /DestinationImageFile:"$tmp" /Compress:max
+          if ($LASTEXITCODE -ne 0) { throw "DISM export failed" }
+          Remove-Item -Force $wim
+          Move-Item -Force $tmp $wim
+          Write-Host "=== WIM info AFTER clean ==="
+          dism /Get-WimInfo /WimFile:"$wim" /Index:1
+
+      - name: Update WIM MD5 in config.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os, glob
+          pkg = "pkg"
+          cfg = os.path.join(pkg, "config.json")
+          with open(cfg, "r", encoding="utf-8") as f:
+              data = json.load(f)
+          def md5_upper(path):
+              h = hashlib.md5()
+              with open(path, "rb") as fp:
+                  for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest().upper()
+          updated = []
+          for entry in data.get("pe_cache", {}).get("pe_list", []):
+              fn = entry.get("filename")
+              if not fn:
+                  continue
+              matches = glob.glob(os.path.join(pkg, "**", fn), recursive=True)
+              if not matches:
+                  raise SystemExit(f"WIM not found in package for config entry: {fn}")
+              new = md5_upper(matches[0])
+              old = entry.get("md5")
+              entry["md5"] = new
+              updated.append((fn, old, new, matches[0]))
+          if not updated:
+              raise SystemExit("No pe_list entries updated; config.json structure unexpected")
+          with open(cfg, "w", encoding="utf-8", newline="\n") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          for fn, old, new, p in updated:
+              print(f"{fn}: {old} -> {new}  ({p})")
+          PY
+          echo "--- updated config.json ---"
+          cat pkg/config.json
+
+      - name: Add README and CSDN evidence into package
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 随包放入说明文件（介绍 LetRecovery + 陈述 CSDN 盗卖事实）与证据截图
+          if [ -f assets/release/README.txt ]; then
+            cp -f assets/release/README.txt pkg/README.txt
+          else
+            echo "warning: assets/release/README.txt 不存在（该分支可能未包含），跳过"
+          fi
+          if ls assets/csdn-evidence/*.png >/dev/null 2>&1; then
+            mkdir -p pkg/images
+            cp -f assets/csdn-evidence/*.png pkg/images/
+          else
+            echo "warning: assets/csdn-evidence/*.png 不存在，跳过 images/"
+          fi
+          echo "--- package README + images ---"
+          ls -la pkg/README.txt pkg/images/ 2>/dev/null || true
+
+      - name: Repackage into LetRecovery.7z
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f LetRecovery.7z
+          ( cd pkg && 7z a -t7z -mx=9 -m0=lzma2 -ms=on ../LetRecovery.7z ./* >/dev/null )
+          ls -la LetRecovery.7z
+
+      - name: Determine tag
+        id: tag
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.tag }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = (Get-Date).ToUniversalTime().ToString('yyyy.M.d')
+          }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Tag: $tag"
+
+      - name: Create Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          SHA="$(git rev-parse HEAD)"
+          BR="${{ inputs.branch || github.ref_name }}"
+          PRE=""
+          # 非 main 分支视为测试构建：标记为 prerelease 并注明请勿使用
+          {
+            if [ "$BR" != "main" ]; then
+              PRE="--prerelease"
+              printf '%s\n\n' "⚠️ 测试构建，请勿使用 / TEST BUILD — DO NOT USE."
+              printf '%s\n\n' "此 release 由非 main 分支（${BR}）构建，仅供测试，可能不稳定。"
+            fi
+            printf '%s\n' "Automated build from branch ${BR} (commit ${SHA})."
+          } > release_notes.md
+          gh release delete "$TAG" --repo "${{ github.repository }}" --yes --cleanup-tag || true
+          gh release create "$TAG" LetRecovery.7z \
+            --repo "${{ github.repository }}" \
+            --target "$SHA" \
+            --title "$TAG" \
+            --notes-file release_notes.md \
+            $PRE
+          echo "Released $TAG (prerelease: ${PRE:-no})"

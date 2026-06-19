@@ -1,8 +1,8 @@
 //! 镜像操作模块
 //!
 //! 该模块封装了 Windows 系统镜像操作功能：
-//! - 镜像释放/应用：使用 wimgapi.dll
-//! - 镜像备份/捕获：使用 wimgapi.dll
+//! - 镜像释放/应用：使用 wimlib (libwim-15.dll)
+//! - 镜像备份/捕获：使用 wimlib (libwim-15.dll)
 //! - 驱动导入：使用 dism.exe 命令行（PE 环境兼容性最佳）
 //! - CAB 包安装：使用 dism.exe 命令行
 
@@ -11,7 +11,8 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 
 use crate::core::dism_exe::{DismExe, DismExeProgress};
-use crate::core::wimgapi::{WimManager, WimProgress, WIM_COMPRESS_LZX, WIM_COMPRESS_LZMS};
+use lr_core::image_meta::{WimProgress, WIM_COMPRESS_LZX, WIM_COMPRESS_LZMS};
+use lr_core::wimlib::WimlibManager;
 
 /// 操作进度
 #[derive(Debug, Clone)]
@@ -39,11 +40,70 @@ impl Dism {
     }
 
     // ========================================================================
-    // 镜像操作 - 使用 wimgapi.dll
+    // 镜像操作 - 使用 wimlib (libwim-15.dll)
     // ========================================================================
 
+    /// 校验镜像完整性（WIM/ESD）。会逐流解压并核对 SHA-1，能发现“解压到一半损坏”
+    /// 这类块级损坏（即使 ESD 没有完整性表）。校验失败即说明镜像已损坏/不完整。
+    pub fn verify_image(
+        &self,
+        image_file: &str,
+        progress_tx: Option<Sender<DismProgress>>,
+    ) -> Result<()> {
+        use lr_core::wimlib::Wimlib;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+        use std::time::Duration;
+
+        log::info!("[Dism] 校验镜像完整性: {}", image_file);
+
+        let lib = Wimlib::new().map_err(|e| anyhow::anyhow!("wimlib 初始化失败: {}", e))?;
+        let handle = lib
+            .open_wim(image_file)
+            .map_err(|e| anyhow::anyhow!("打开镜像失败: {}", e))?;
+
+        // 进度监控线程：读取 wimlib 全局校验进度并上报
+        let done = Arc::new(AtomicBool::new(false));
+        let done_mon = Arc::clone(&done);
+        let tx = progress_tx.clone();
+        let monitor = std::thread::spawn(move || {
+            let mut last = 0u8;
+            loop {
+                if done_mon.load(Ordering::SeqCst) {
+                    break;
+                }
+                let p = Wimlib::get_global_progress();
+                if p > last {
+                    last = p;
+                    if let Some(ref t) = tx {
+                        let _ = t.send(DismProgress {
+                            percentage: p,
+                            status: format!("正在校验镜像 ({}%)...", p),
+                        });
+                    }
+                }
+                if p >= 100 {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        });
+
+        let result = handle.verify();
+        done.store(true, Ordering::SeqCst);
+        let _ = monitor.join();
+
+        match result {
+            Ok(_) => {
+                log::info!("[Dism] 镜像校验通过");
+                Ok(())
+            }
+            Err(e) => anyhow::bail!("{}", e),
+        }
+    }
+
     /// 应用系统镜像 (WIM/ESD)
-    /// 使用 wimgapi.dll 实现
+    /// 使用 wimlib (libwim-15.dll) 实现
     pub fn apply_image(
         &self,
         image_file: &str,
@@ -51,10 +111,10 @@ impl Dism {
         index: u32,
         progress_tx: Option<Sender<DismProgress>>,
     ) -> Result<()> {
-        log::info!("[Dism] 使用 wimgapi 应用镜像: {} -> {}", image_file, apply_dir);
+        log::info!("[Dism] 使用 wimlib 应用镜像: {} -> {}", image_file, apply_dir);
 
-        let wim_manager = WimManager::new()
-            .map_err(|e| anyhow::anyhow!("wimgapi 初始化失败: {}", e))?;
+        let wim_manager = WimlibManager::new()
+            .map_err(|e| anyhow::anyhow!("wimlib 初始化失败: {}", e))?;
 
         // 创建进度转换通道
         let (wim_tx, wim_rx) = std::sync::mpsc::channel::<WimProgress>();
@@ -90,7 +150,7 @@ impl Dism {
     }
 
     /// 捕获系统镜像 (备份)
-    /// 使用 wimgapi.dll 实现
+    /// 使用 wimlib (libwim-15.dll) 实现
     pub fn capture_image(
         &self,
         image_file: &str,
@@ -99,10 +159,10 @@ impl Dism {
         description: &str,
         progress_tx: Option<Sender<DismProgress>>,
     ) -> Result<()> {
-        log::info!("[Dism] 使用 wimgapi 捕获镜像: {} -> {}", capture_dir, image_file);
+        log::info!("[Dism] 使用 wimlib 捕获镜像: {} -> {}", capture_dir, image_file);
 
-        let wim_manager = WimManager::new()
-            .map_err(|e| anyhow::anyhow!("wimgapi 初始化失败: {}", e))?;
+        let wim_manager = WimlibManager::new()
+            .map_err(|e| anyhow::anyhow!("wimlib 初始化失败: {}", e))?;
 
         let (wim_tx, wim_rx) = std::sync::mpsc::channel::<WimProgress>();
 
@@ -141,7 +201,7 @@ impl Dism {
     }
 
     /// 增量备份镜像
-    /// 使用 wimgapi.dll 实现
+    /// 使用 wimlib (libwim-15.dll) 实现
     pub fn append_image(
         &self,
         image_file: &str,
@@ -150,14 +210,14 @@ impl Dism {
         description: &str,
         progress_tx: Option<Sender<DismProgress>>,
     ) -> Result<()> {
-        log::info!("[Dism] 使用 wimgapi 追加镜像: {} -> {}", capture_dir, image_file);
+        log::info!("[Dism] 使用 wimlib 追加镜像: {} -> {}", capture_dir, image_file);
 
         // 对于追加操作，WimManager 的 capture_image 在文件存在时会自动追加
         self.capture_image(image_file, capture_dir, name, description, progress_tx)
     }
 
     /// 捕获系统镜像为ESD格式（高压缩）
-    /// 使用 wimgapi.dll + LZMS 压缩
+    /// 使用 wimlib (libwim-15.dll) + LZMS 压缩
     pub fn capture_image_esd(
         &self,
         image_file: &str,
@@ -166,10 +226,10 @@ impl Dism {
         description: &str,
         progress_tx: Option<Sender<DismProgress>>,
     ) -> Result<()> {
-        log::info!("[Dism] 使用 wimgapi 捕获ESD镜像: {} -> {}", capture_dir, image_file);
+        log::info!("[Dism] 使用 wimlib 捕获ESD镜像: {} -> {}", capture_dir, image_file);
 
-        let wim_manager = WimManager::new()
-            .map_err(|e| anyhow::anyhow!("wimgapi 初始化失败: {}", e))?;
+        let wim_manager = WimlibManager::new()
+            .map_err(|e| anyhow::anyhow!("wimlib 初始化失败: {}", e))?;
 
         let (wim_tx, wim_rx) = std::sync::mpsc::channel::<WimProgress>();
 
@@ -216,7 +276,7 @@ impl Dism {
         description: &str,
         progress_tx: Option<Sender<DismProgress>>,
     ) -> Result<()> {
-        log::info!("[Dism] 使用 wimgapi 追加ESD镜像: {} -> {}", capture_dir, image_file);
+        log::info!("[Dism] 使用 wimlib 追加ESD镜像: {} -> {}", capture_dir, image_file);
         self.capture_image_esd(image_file, capture_dir, name, description, progress_tx)
     }
 
@@ -244,8 +304,8 @@ impl Dism {
             });
         }
 
-        let wim_manager = WimManager::new()
-            .map_err(|e| anyhow::anyhow!("wimgapi 初始化失败: {}", e))?;
+        let wim_manager = WimlibManager::new()
+            .map_err(|e| anyhow::anyhow!("wimlib 初始化失败: {}", e))?;
 
         let (wim_tx, wim_rx) = std::sync::mpsc::channel::<WimProgress>();
 
@@ -454,17 +514,17 @@ impl Dism {
     }
 
     // ========================================================================
-    // 镜像信息 - 使用 wimgapi.dll + WIM XML 解析
+    // 镜像信息 - 使用 wimlib (libwim-15.dll) + WIM XML 解析
     // ========================================================================
 
     /// 获取 WIM/ESD 镜像信息（所有分卷）
-    /// 使用 wimgapi.dll 或直接解析 WIM XML 元数据
+    /// 使用 wimlib (libwim-15.dll) 或直接解析 WIM XML 元数据
     #[allow(dead_code)]
     pub fn get_image_info(&self, image_file: &str) -> Result<Vec<ImageInfo>> {
-        // 首先尝试使用 wimgapi
-        if let Ok(wim_manager) = WimManager::new() {
+        // 首先尝试使用 wimlib
+        if let Ok(wim_manager) = WimlibManager::new() {
             if let Ok(images) = wim_manager.get_image_info(image_file) {
-                log::info!("[Dism] 从 wimgapi 成功获取 {} 个镜像信息", images.len());
+                log::info!("[Dism] 从 wimlib 成功获取 {} 个镜像信息", images.len());
                 return Ok(images.into_iter().map(|img| ImageInfo {
                     index: img.index,
                     name: img.name,

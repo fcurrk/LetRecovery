@@ -1,6 +1,6 @@
 [package]
 name = "LetRecovery"
-version = "2026.5.11"
+version = "2026.6.19"
 edition = "2021"
 authors = ["NORMAL-EX"]
 description = "Windows系统一键重装工具"
@@ -24,6 +24,9 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 # 序列化
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# XML 解析（无人值守文件语法校验）
+roxmltree = "0.20"
 
 # Windows API
 [target.'cfg(windows)'.dependencies]
@@ -63,7 +66,10 @@ windows = { version = "0.58", features = [
 ] }
 winreg = "0.52"
 
-# wimgapi.dll 动态加载
+# 两端共享核心库
+lr-core = { path = "../lr-core" }
+
+# 动态加载 DLL（wimlib / fveapi 等）
 libloading = "0.8"
 
 # 编码转换
@@ -101,9 +107,3 @@ winres = "0.1"
 [[bin]]
 name = "LetRecovery"
 path = "src/main.rs"
-
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-strip = true

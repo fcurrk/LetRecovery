@@ -9,13 +9,14 @@ import {
   Rocket,
   Gauge,
   BadgeCheck,
-  AlertTriangle,
   Info,
   ExternalLink,
   Cloud,
-  HardDrive
+  HardDrive,
+  Github
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ImageWithLoading } from '@/components/common'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Dialog,
@@ -40,7 +41,7 @@ const Home: React.FC = () => {
       playerRef.current = new Artplayer({
         container: artRef.current,
         url: 'https://p1.cloud-pe.cn/LetRecovery.mp4',
-        poster: 'https://pic1.imgdb.cn/item/6975ba3d6deeadc41a3395a4.jpg',
+        poster: 'https://pic1.imgdb.cn/item/6a33aa9a91b65c4475abaa73.jpg',
         volume: 0.5,
         isLive: false,
         muted: false,
@@ -111,11 +112,6 @@ const Home: React.FC = () => {
 
   const downloadLinks = [
     {
-      name: 'OneDrive',
-      url: 'https://ruzex-my.sharepoint.cn/:u:/g/personal/ruz-ex_ruzex_partner_onmschina_cn1/IQBzSTykKOWNRoT3afEq1KiiAewece1PUpbKCFQNxygSwqk?e=IU37rX',
-      icon: Cloud,
-    },
-    {
       name: '123云盘',
       url: 'https://www.123865.com/s/5ZD9-OZ2fd',
       icon: HardDrive,
@@ -124,6 +120,11 @@ const Home: React.FC = () => {
       name: 'Cloud-PE 云盘',
       url: 'https://pan.sysre.cn/s/N3iW',
       icon: Cloud,
+    },
+    {
+      name: 'GitHub',
+      url: 'https://github.com/NORMAL-EX/LetRecovery/releases',
+      icon: Github,
     }
   ]
 
@@ -166,37 +167,15 @@ const Home: React.FC = () => {
                     </DialogHeader>
                     <DialogPanel>
                       <div className="space-y-4">
-                        {/* 警告通知 */}
-                        <Alert variant="warning">
-                          <AlertTriangle className="size-4" />
-                          <AlertTitle>下载服务可能不稳定</AlertTitle>
-                          <AlertDescription>
-                            近期我们的下载服务遭受了来自数百个境外 IP 的恶意请求攻击，累计产生了超过 33TB 的异常流量，
-                            导致上游服务商对我们实施了严格的流量限制。因此，下载功能可能会出现间歇性不可用的情况，敬请谅解。
-                          </AlertDescription>
-                        </Alert>
 
                         {/* 说明信息 */}
                         <Alert variant="info">
                           <Info className="size-4" />
                           <AlertTitle>关于此下载</AlertTitle>
                           <AlertDescription>
-                            以下提供的是已内置 WinPE 环境的最新版 LetRecovery 完整包。
-                            如需不含 PE 的精简版本，请前往{' '}
-                            <a
-                              href="https://github.com/NORMAL-EX/LetRecovery/releases"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-1"
-                            >
-                              GitHub Releases
-                              <ExternalLink className="size-3" />
-                            </a>{' '}
-                            获取。
-                            <br></br>
-                            （精简版本的 LetRecovery 在正常系统下对系统盘进行重装操作时，需要下载 WinPE 环境，
-                            由于我们的下载服务不稳定，可能出现下载失败的情况，因此我们不推荐您下载精简版本的
-                            LetRecovery，除非您是在 WinPE 环境下使用）
+                            下方所有下载源提供的均为同一份内容——已内置 WinPE 环境的 LetRecovery
+                            完整版，下载后开箱即用，无需再单独获取 WinPE。各下载源内容完全一致，
+                            您可任选其一，建议优先选择访问速度较快的来源。
                           </AlertDescription>
                         </Alert>
 
@@ -259,10 +238,13 @@ const Home: React.FC = () => {
             {/* Right Image */}
             <div className="relative">
               <div className="relative overflow-hidden shadow-2xl border border-border/50 bg-card" style={{ borderRadius: 6 }}>
-                <img
-                  src="https://pic1.imgdb.cn/item/69613b1d14866864fecdc7dc.png"
+                <ImageWithLoading
+                  src="https://pic1.imgdb.cn/item/6a339a3591b65c4475ab67b2.png"
                   alt="LetRecovery"
                   className="w-full h-auto"
+                  wrapperClassName="w-full"
+                  rounded="rounded-none"
+                  loadingMinHeight="260px"
                   loading="lazy"
                 />
               </div>

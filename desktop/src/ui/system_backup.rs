@@ -11,6 +11,11 @@ impl App {
         ui.heading("系统备份");
         ui.separator();
 
+        // 整页套一层垂直滚动：窗口调小时也能滚动到底部的「开始备份」按钮等控件。
+        egui::ScrollArea::vertical()
+            .id_salt("system_backup_page_scroll")
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
         let is_pe = self.is_pe_environment();
         
         // 判断是否需要通过PE备份
@@ -76,7 +81,7 @@ impl App {
                             // 显示 BitLocker 状态
                             let status_color = match partition.bitlocker_status {
                                 crate::core::bitlocker::VolumeStatus::EncryptedLocked => egui::Color32::RED,
-                                crate::core::bitlocker::VolumeStatus::EncryptedUnlocked => egui::Color32::GREEN,
+                                crate::core::bitlocker::VolumeStatus::EncryptedUnlocked => egui::Color32::from_rgb(102, 187, 106),
                                 crate::core::bitlocker::VolumeStatus::Encrypting | 
                                 crate::core::bitlocker::VolumeStatus::Decrypting => egui::Color32::YELLOW,
                                 _ => ui.visuals().text_color(),
@@ -206,49 +211,44 @@ impl App {
         if show_pe_selector {
             ui.add_space(10.0);
             ui.separator();
-            
-            ui.horizontal(|ui| {
-                ui.label("🔧 PE环境:");
-                
-                if pe_available {
-                    if let Some(ref config) = self.config {
-                        egui::ComboBox::from_id_salt("pe_select_backup")
-                            .selected_text(
-                                self.selected_pe_for_backup
-                                    .and_then(|i| config.pe_list.get(i))
-                                    .map(|p| p.display_name.as_str())
-                                    .unwrap_or("请选择PE"),
-                            )
-                            .show_ui(ui, |ui| {
-                                for (i, pe) in config.pe_list.iter().enumerate() {
-                                    ui.selectable_value(
-                                        &mut self.selected_pe_for_backup,
-                                        Some(i),
-                                        &pe.display_name,
-                                    );
-                                }
-                            });
-                        
-                        // 显示PE就绪状态
-                        if let Some(idx) = self.selected_pe_for_backup {
-                            if let Some(pe) = config.pe_list.get(idx) {
-                                let (exists, _) = crate::core::pe::PeManager::check_pe_exists(&pe.filename);
-                                if exists {
-                                    ui.colored_label(egui::Color32::GREEN, "✓ 已就绪");
-                                } else {
-                                    ui.colored_label(egui::Color32::from_rgb(255, 165, 0), "需下载");
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    ui.colored_label(egui::Color32::RED, "未找到PE配置");
+
+            if pe_available {
+                let pe_count = self.config.as_ref().map(|c| c.pe_list.len()).unwrap_or(0);
+                // 只有一个 PE 环境时自动选中
+                if pe_count == 1 && self.selected_pe_for_backup.is_none() {
+                    self.selected_pe_for_backup = Some(0);
                 }
-            });
-            
+                // 仅在存在多个 PE 时才显示选择行；只有一个 PE 时隐藏。
+                if pe_count > 1 {
+                    if let Some(ref config) = self.config {
+                        ui.horizontal(|ui| {
+                            ui.label("PE环境:");
+                            egui::ComboBox::from_id_salt("pe_select_backup")
+                                .selected_text(
+                                    self.selected_pe_for_backup
+                                        .and_then(|i| config.pe_list.get(i))
+                                        .map(|p| p.display_name.as_str())
+                                        .unwrap_or("请选择PE"),
+                                )
+                                .show_ui(ui, |ui| {
+                                    for (i, pe) in config.pe_list.iter().enumerate() {
+                                        ui.selectable_value(
+                                            &mut self.selected_pe_for_backup,
+                                            Some(i),
+                                            &pe.display_name,
+                                        );
+                                    }
+                                });
+                        });
+                    }
+                }
+            } else {
+                ui.colored_label(egui::Color32::RED, "未找到PE配置");
+            }
+
             ui.colored_label(
                 egui::Color32::from_rgb(255, 165, 0),
-                "⚠ 备份当前系统分区需要先重启到PE环境",
+                "备份当前系统分区需要先重启到PE环境",
             );
         }
 
@@ -257,7 +257,7 @@ impl App {
             ui.add_space(5.0);
             ui.colored_label(
                 egui::Color32::RED,
-                "❌ 无法获取PE配置，无法备份当前系统分区。请检查网络连接后重试。",
+                "无法获取PE配置，无法备份当前系统分区。请检查网络连接后重试。",
             );
         }
 
@@ -310,12 +310,12 @@ impl App {
             ui.add_space(10.0);
             match self.backup_mode {
                 BackupMode::Direct => {
-                    ui.colored_label(egui::Color32::GREEN, "✓ 备份完成！");
+                    ui.colored_label(egui::Color32::from_rgb(102, 187, 106), "备份完成！");
                 }
                 BackupMode::ViaPE => {
                     // ViaPE模式完成提示在 BackupProgress 页面显示
                     // 这里只显示简单状态
-                    ui.colored_label(egui::Color32::GREEN, "✓ PE环境准备完成，请重启进入PE继续备份");
+                    ui.colored_label(egui::Color32::from_rgb(102, 187, 106), "PE环境准备完成，请重启进入PE继续备份");
                 }
             }
         }
@@ -323,7 +323,7 @@ impl App {
         // 显示备份错误
         if let Some(ref error) = self.backup_error {
             ui.add_space(10.0);
-            ui.colored_label(egui::Color32::RED, format!("✗ {}", error));
+            ui.colored_label(egui::Color32::RED, format!("{}", error));
         }
 
         // 状态提示
@@ -345,11 +345,12 @@ impl App {
                     ui.add_space(5.0);
                     ui.colored_label(
                         egui::Color32::from_rgb(255, 165, 0),
-                        "⚠ 所选分区似乎没有 Windows 系统",
+                        "所选分区似乎没有 Windows 系统",
                     );
                 }
             }
         }
+            }); // end ScrollArea
     }
 
     /// 检查是否需要通过PE备份
@@ -466,8 +467,7 @@ impl App {
                     self.pending_download_url = Some(pe.download_url.clone());
                     self.pending_download_filename = Some(pe.filename.clone());
                     self.pending_pe_md5 = pe.md5.clone();  // 设置MD5校验值
-                    let pe_dir = crate::utils::path::get_exe_dir()
-                        .join("PE")
+                    let pe_dir = crate::utils::path::get_pe_dir()
                         .to_string_lossy()
                         .to_string();
                     self.download_save_path = pe_dir;
@@ -726,14 +726,14 @@ impl App {
         if self.backup_progress >= 100 {
             match self.backup_mode {
                 BackupMode::Direct => {
-                    ui.colored_label(egui::Color32::GREEN, "备份完成！");
+                    ui.colored_label(egui::Color32::from_rgb(102, 187, 106), "备份完成！");
                     ui.add_space(10.0);
                     if ui.button("返回").clicked() {
                         self.current_panel = Panel::SystemBackup;
                     }
                 }
                 BackupMode::ViaPE => {
-                    ui.colored_label(egui::Color32::GREEN, "PE环境准备完成！");
+                    ui.colored_label(egui::Color32::from_rgb(102, 187, 106), "PE环境准备完成！");
                     ui.label("系统将重启进入PE环境继续备份。");
                     ui.add_space(10.0);
                     ui.horizontal(|ui| {

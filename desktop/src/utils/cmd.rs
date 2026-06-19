@@ -22,12 +22,11 @@ pub fn create_command<S: AsRef<OsStr>>(program: S) -> Command {
 
 /// 执行命令并在 debug 模式下输出调试信息
 pub fn run_command<S: AsRef<OsStr>>(program: S, args: &[&str]) -> std::io::Result<Output> {
-    #[cfg(debug_assertions)]
-    let _program_str = program.as_ref().to_string_lossy();
+    let program_str = program.as_ref().to_string_lossy();
 
     #[cfg(debug_assertions)]
     {
-        println!("[CMD] {} {}", _program_str, args.join(" "));
+        println!("[CMD] {} {}", program_str, args.join(" "));
     }
 
     let output = create_command(program).args(args).output()?;
@@ -52,12 +51,11 @@ pub fn run_command<S: AsRef<OsStr>>(program: S, args: &[&str]) -> std::io::Resul
 
 /// 执行命令并spawn（不等待结果）
 pub fn spawn_command<S: AsRef<OsStr>>(program: S, args: &[&str]) -> std::io::Result<Child> {
-    #[cfg(debug_assertions)]
-    let _program_str = program.as_ref().to_string_lossy();
+    let program_str = program.as_ref().to_string_lossy();
 
     #[cfg(debug_assertions)]
     {
-        println!("[SPAWN] {} {}", _program_str, args.join(" "));
+        println!("[SPAWN] {} {}", program_str, args.join(" "));
     }
 
     create_command(program).args(args).spawn()
@@ -71,12 +69,11 @@ pub fn run_command_string<S: AsRef<OsStr>>(program: S, args: &[&str]) -> std::io
 
 /// 执行命令并返回 stdout 字符串（带自定义参数的版本）
 pub fn run_command_with_args<S: AsRef<OsStr>>(program: S, args: Vec<String>) -> std::io::Result<Output> {
-    #[cfg(debug_assertions)]
-    let _program_str = program.as_ref().to_string_lossy();
+    let program_str = program.as_ref().to_string_lossy();
 
     #[cfg(debug_assertions)]
     {
-        println!("[CMD] {} {}", _program_str, args.join(" "));
+        println!("[CMD] {} {}", program_str, args.join(" "));
     }
 
     let output = create_command(program).args(&args).output()?;
@@ -101,12 +98,11 @@ pub fn run_command_with_args<S: AsRef<OsStr>>(program: S, args: Vec<String>) -> 
 
 /// 执行带 Stdio 管道的命令（用于 DISM 等需要实时输出的场景）
 pub fn spawn_command_piped<S: AsRef<OsStr>>(program: S, args: &[&str]) -> std::io::Result<Child> {
-    #[cfg(debug_assertions)]
-    let _program_str = program.as_ref().to_string_lossy();
+    let program_str = program.as_ref().to_string_lossy();
 
     #[cfg(debug_assertions)]
     {
-        println!("[SPAWN PIPED] {} {}", _program_str, args.join(" "));
+        println!("[SPAWN PIPED] {} {}", program_str, args.join(" "));
     }
 
     create_command(program)
