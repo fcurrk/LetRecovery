@@ -25,13 +25,17 @@ jobs:
         env:
           SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
         working-directory: desktop
-        run: cargo build --release --all-features --target=x86_64-pc-windows-msvc
+        run: cargo build --release
+        echo "=== Checking default target ==="
+        dir target\release\*.exe
+        echo "=== Checking default Cargo ==="
+        dir *.*
 
-      - name: build pe
-        env:
-          SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
-        working-directory: pe
-        run: cargo build --release --all-features --target=x86_64-pc-windows-msvc
+#       - name: build pe
+#         env:
+#           SERVER_BASE_URL: ${{ secrets.SERVER_BASE_URL }}
+#         working-directory: pe
+#         run: cargo build --release
 
       - name: Commit and push Cargo.lock updates
         run: |
@@ -45,12 +49,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LetRecovery-Desktop
-          path: desktop/target/x86_64-pc-windows-msvc/release/*.exe
+          path: desktop/target/release/*.exe
           retention-days: 30
 
-      - name: Upload PE artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: LetRecovery-PE
-          path: pe/target/x86_64-pc-windows-msvc/release/*.exe
-          retention-days: 30
+#       - name: Upload PE artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: LetRecovery-PE
+#           path: pe/target/release/*.exe
+#           retention-days: 30
