@@ -1428,7 +1428,7 @@ fn generate_unattend_xml(target_partition: &str, options: &AdvancedOptions) -> a
         .join("panther")
         .join("unattend.xml");
     if existing_unattend.exists() {
-        log::info!("[UNATTEND] 目标分区已存在 unattend.xml: {:?}，跳过生成", existing_unattend);
+        log::info!("[UNATTEND] 目标分区已存在 unattend.xml: {}，跳过生成", existing_unattend.display());
         return Ok(());
     }
     
