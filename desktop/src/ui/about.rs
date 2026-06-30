@@ -246,7 +246,7 @@ impl App {
                 ui.indent("advanced_options_desc", |ui| {
                     ui.colored_label(
                         egui::Color32::from_rgb(220, 80, 80),
-                        tr!("⚠ 面向高级用户，小白请勿开启，设置不当可能导致无法开机。"),
+                        tr!("⚠ 面向高级用户，新手请勿开启，设置不当可能导致无法开机。"),
                     );
                     ui.colored_label(
                         egui::Color32::GRAY,

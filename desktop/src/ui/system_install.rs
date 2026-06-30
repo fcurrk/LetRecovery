@@ -38,7 +38,7 @@ impl App {
             ui.horizontal(|ui| {
                 ui.colored_label(
                     egui::Color32::from_rgb(100, 181, 246),
-                    tr!("新手用户？可以在\"关于\"页面中开启小白模式，获得更简单的操作体验"),
+                    tr!("新手用户？可以在\"关于\"页面中开启简易模式，获得更简单的操作体验"),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.small_button("×").clicked() {
@@ -462,7 +462,7 @@ impl App {
 
             if self.custom_unattend_path.is_empty() {
                 ui.label(
-                    egui::RichText::new(tr!("未选择则使用内置生成的无人值守配置")).weak(),
+                    egui::RichText::new(tr!("未选使用内置无人值守配置,系统已有此配置文件优先")).weak(),
                 );
             } else {
                 ui.horizontal(|ui| {
